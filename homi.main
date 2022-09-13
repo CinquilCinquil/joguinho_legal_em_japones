@@ -1,0 +1,393 @@
+#include<stdio.h>
+#include<math.h>
+#include<string.h>
+
+#define true 1
+#define false 0
+#define W 15
+#define H 7
+#define MAX_ENEMY_AMMOUNT 5
+#define VOID 0
+#define PLAYER 1
+#define WALL 2
+#define ENEMY 3
+#define WATER 4
+#define TREE 5
+#define KATANA 6
+#define BOW 7
+#define AXE 8
+
+int mapa[W][H]; //has walls, phys, etc... positions
+
+int solids[] = {WALL,WATER,TREE};
+
+int enemies[MAX_ENEMY_AMMOUNT][3];
+
+int px = 0;
+int py = 0;
+int pHp = 3;
+int pWeapon = KATANA;
+
+/*
+typedef struct{
+    int katana_atk = 1;
+} weapon_data;
+*/
+
+int sign(int v)
+{
+    if (v == 0)
+    {
+        return 0;
+    }
+    else {
+        if (v < 0) {return -1;}
+        if (v > 0) {return 1;} //if desnecessário mas beleza é bela
+    }
+}
+
+double distance(int x1,int y1,int x2,int y2)
+{
+    double dis;
+    dis = (double) sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2));
+    return dis;
+}
+
+int weapon_data (int weapon,int what_do_you_want)
+{
+    if (what_do_you_want == 0) //atk
+    {
+        if (weapon == KATANA)
+        {
+            return 1;
+        }
+        if (weapon == AXE)
+        {
+            return 2;
+        }
+        if (weapon == BOW)
+        {
+            return 1;
+        }
+    }
+    if (what_do_you_want == 1) //range (ao quadrado pq int e double smoafnwapo)
+    {
+        if (weapon == KATANA)
+        {
+            return 2; //sqrt(2)
+        }
+        if (weapon == AXE)
+        {
+            return 2; //sqrt(2)
+        }
+        if (weapon == BOW)
+        {
+            return 18; //3*sqrt(2)
+        }
+    }
+    return -1;
+}
+
+void create_mapa()
+{
+    for (int j = 0;j < H;j ++)
+    {
+        for (int i = 0;i < W;i ++)
+        {
+            mapa[i][j] = 0;
+        }
+    }
+}
+
+void set_enemies()
+{
+    for (int i = 0;i < MAX_ENEMY_AMMOUNT;i ++)
+    {
+        for (int j = 0;j < 3;j ++)
+        {
+            enemies[i][j] = 0;
+        }
+    }
+}
+
+const char * char_converter(int v)
+{
+    if (v == VOID)
+    {
+        return "ロ";
+    }
+    if (v == PLAYER)
+    {
+        return "人";
+    }
+    if (v == WALL)
+    {
+        return "壁";
+    }
+    if (v == ENEMY)
+    {
+        return "か";
+    }
+    if (v == WATER)
+    {
+        return "水";
+    }
+    if (v == TREE)
+    {
+        return "木";
+    }
+    if (v == KATANA)
+    {
+        return "刀";
+    }
+    if (v == BOW)
+    {
+        return "弓";
+    }
+    if (v == AXE)
+    {
+        return "斧";
+    }
+}
+
+void print_mapa()
+{
+    printf("\n");
+    for (int j = 0;j < H;j ++)
+    {
+        for (int i = 0;i < W;i ++)
+        {   
+            if (px == i && py == j)
+            {
+                printf(char_converter(PLAYER));
+            }
+            else {
+                int int_son = mapa[i][j];
+
+                for (int e = 0;e < MAX_ENEMY_AMMOUNT;e ++)
+                {
+                    if (enemies[e][2] != 0)
+                    {
+                        if (enemies[e][0] == i && enemies[e][1] == j)
+                        {
+                            int_son = ENEMY;
+                            break;
+                        }
+                    }
+                }
+
+                printf(char_converter(int_son));
+            }
+        }
+        printf("\n");
+    }
+}
+
+/*
+void print_msg(char * msg)
+{
+    if (strcmp(msg,"") == true)
+    {
+        printf("%s\n",msg);
+    }
+}
+*/
+
+int is_wall(int x,int y)
+{
+    for (int i = 0;i < 3;i ++) //gotta figure out list size!!!!
+    {
+        if (mapa[x][y] == solids[i])
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+int is_enemy(int x,int y)
+{
+    for (int e = 0;e < MAX_ENEMY_AMMOUNT;e ++)
+    {
+        if (enemies[e][2] != 0)
+        {
+            int x_ = enemies[e][0];
+            int y_ = enemies[e][1];
+            if (x == x_ && y == y_)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+int move_player(int dx,int dy)
+{
+    if (px + dx <= W - 1 && px + dx >= 0 && py + dy <= H - 1 && py + dy >= 0)
+    {
+        if (is_wall(px + dx,py + dy) == 0)
+        {
+            return dx + dy; //um dos dois é 0... o_o
+        }
+    }
+    return 0;
+}
+
+int move_enemy(int ex,int ey,int dx,int dy)
+{
+    if (ex + dx <= W - 1 && ex + dx >= 0 && ey + dy <= H - 1 && ey + dy >= 0)
+    {
+        if (is_wall(ex + dx,ey + dy) == false && ((ex + dx != px) || (ey + dy != py)))
+        {
+            if (is_enemy(ex + dx,ey + dy) == false)
+            {
+                return dx + dy; //um dos dois é 0... o_o
+            }
+        }
+    }
+    return 0;
+}
+
+void attack(int dx,int dy)
+{
+    if ((dx*dx) + (dy*dy) <= weapon_data(pWeapon,1))
+    {
+        for (int e = 0;e < MAX_ENEMY_AMMOUNT;e ++)
+        {
+            if (enemies[e][2] != 0)
+            {
+                if (enemies[e][0] == px + dx && enemies[e][1] == py + dy)
+                {
+                    enemies[e][2] --;
+                    printf("ENEMY WAS ATTACKED!!! ENEMY HP: %d\n",enemies[e][2]);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+int cll_path(int x1,int y1,int x2,int y2)
+{
+
+    int ix = x1;
+    int iy = y1;
+
+    while (ix != x2 || iy != y2)
+    {
+        int dx = (x2 - ix);
+        int dy = (y2 - iy);
+        
+        ix += sign(dx);
+        if (is_wall(ix,iy) == true)
+        {
+            return false;
+        }
+        
+        iy += sign(dy);
+        if (is_wall(ix,iy) == true)
+        {
+            return false;
+        }
+
+    }
+
+    return true;
+
+}
+
+int main()
+{
+    printf("Starting...\n");
+
+    create_mapa();
+    set_enemies();
+
+    //alterations
+    for (int i = 0;i < 3;i ++)
+    {
+        mapa[4][i + 1] = WALL;
+    }
+    mapa[5][3] = WALL;
+    for (int i = 0;i < 4;i ++)
+    {
+        mapa[0][2 + i] = WATER;
+    }
+    mapa[13][2] = TREE;
+    mapa[13][3] = TREE;
+    mapa[14][3] = TREE;
+    
+    enemies[0][0] = W - 1;//x
+    enemies[0][1] = H - 1;//y
+    enemies[0][2] = 2;//hp
+    
+    enemies[1][0] = W - 3;//x
+    enemies[1][1] = H - 1;//y
+    enemies[1][2] = 2;//hp
+
+    //initializing variables
+    int step = 0;
+
+    //game loop
+    while (1 == 1)
+    {
+        char cmd_,cmd_a;
+
+        if (pHp <= 0)
+        {
+            break;
+        }
+
+        printf("step: %d    ❤ : %d   Weapon: %s",step,pHp,char_converter(pWeapon));
+        print_mapa();
+        scanf("%c",&cmd_);//this guy is 0x0A (enter) dont exactly know how it works...
+        scanf("%c",&cmd_a);
+
+        if ((int) cmd_ == 10) {cmd_ = cmd_a;}
+
+        if (cmd_ == 'w') {py += move_player(0,-1);}
+        if (cmd_ == 's') {py += move_player(0,+1);}
+        if (cmd_ == 'a') {px += move_player(-1,0);}
+        if (cmd_ == 'd') {px += move_player(+1,0);}
+        if (cmd_ == 'x')
+        {
+            int dx,dy;
+
+            printf("prepare to attack!!\n");
+            scanf("%d %d0x0A",&dx,&dy);
+            scanf("%c",&cmd_a);
+
+            attack(dx,dy);
+        }
+
+        //enemy AI
+        for (int e = 0;e < MAX_ENEMY_AMMOUNT;e ++)
+        {
+            if (enemies[e][2] != 0)
+            {
+                if (cll_path(enemies[e][0],enemies[e][1],px,py) == true)
+                {
+                    if (distance(enemies[e][0],enemies[e][1],px,py) > 1)
+                    {
+                        int dx = sign(px - enemies[e][0]);
+                        int dy = sign(py - enemies[e][1]);
+                        enemies[e][0] += move_enemy(enemies[e][0],enemies[e][1],dx,0);
+                        enemies[e][1] += move_enemy(enemies[e][0],enemies[e][1],0,dy);
+                    }
+                    else {
+                        pHp --;
+                        printf("|Ouch! -1 Hp|\n");
+                    }
+                }
+            }
+        }
+
+        step ++;
+    }
+
+    printf("\nGAME OVER");
+
+    return 0;
+}
